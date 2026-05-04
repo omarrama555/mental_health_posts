@@ -5,863 +5,641 @@ import numpy as np
 import re
 import joblib
 import os
-import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
-import base64
-from io import BytesIO
+import time
 
 # ============================================================================
 # PAGE CONFIGURATION
 # ============================================================================
 st.set_page_config(
-    page_title="MindGuard - Mental Health Crisis Detection",
-    page_icon="🧠",
+    page_title="MindGuard",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # ============================================================================
-# CUSTOM CSS FOR PROFESSIONAL LOOK
+# 3D ANIMATIONS & PROFESSIONAL CSS
 # ============================================================================
 st.markdown("""
 <style>
-    /* Main container styling */
-    .main {
-        padding: 0rem 1rem;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    * {
+        font-family: 'Inter', sans-serif;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
     }
     
-    /* Header styling */
-    .main-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* 3D Animation Keyframes */
+    @keyframes fadeInUp {
+        0% {
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(59,130,246,0.4);
+        }
+        70% {
+            box-shadow: 0 0 0 15px rgba(59,130,246,0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(59,130,246,0);
+        }
+    }
+    
+    @keyframes float {
+        0% {
+            transform: translateY(0px);
+        }
+        50% {
+            transform: translateY(-10px);
+        }
+        100% {
+            transform: translateY(0px);
+        }
+    }
+    
+    @keyframes glowPulse {
+        0% {
+            opacity: 0.3;
+            filter: blur(20px);
+        }
+        100% {
+            opacity: 0.8;
+            filter: blur(30px);
+        }
+    }
+    
+    /* Main container animation */
+    .animated-container {
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    /* Header with 3D effect */
+    .header-3d {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
         padding: 2rem;
-        border-radius: 15px;
+        border-radius: 24px;
         margin-bottom: 2rem;
         text-align: center;
+        box-shadow: 0 20px 35px -10px rgba(0,0,0,0.2);
+        border: 1px solid rgba(59,130,246,0.2);
+        position: relative;
+        overflow: hidden;
     }
     
-    .main-header h1 {
-        color: white;
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
+    .header-3d::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%);
+        animation: glowPulse 3s ease-in-out infinite alternate;
     }
     
-    .main-header p {
-        color: rgba(255,255,255,0.9);
-        font-size: 1.1rem;
+    .header-3d h1 {
+        color: #ffffff;
+        font-size: 2.2rem;
+        font-weight: 600;
+        letter-spacing: -0.5px;
+        position: relative;
+        z-index: 1;
     }
     
-    /* Card styling */
-    .card {
-        background: white;
-        border-radius: 12px;
+    .header-3d p {
+        color: #94a3b8;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* 3D Cards */
+    .card-3d {
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
         padding: 1.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        margin-bottom: 1rem;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+        border: 1px solid rgba(255,255,255,0.2);
+        transition: all 0.3s ease;
+        animation: fadeInUp 0.5s ease-out;
     }
     
-    /* Metric cards */
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
-        padding: 1rem;
+    .card-3d:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 30px 60px -12px rgba(0,0,0,0.2);
+    }
+    
+    /* Result Cards with 3D depth */
+    .result-crisis {
+        background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+        border-radius: 24px;
+        padding: 2rem;
         color: white;
-        text-align: center;
+        animation: fadeInUp 0.5s ease-out, pulse 2s infinite;
+        box-shadow: 0 20px 40px -10px rgba(127,29,29,0.4);
+        border: 1px solid rgba(248,113,113,0.3);
     }
     
-    .metric-value {
+    .result-support {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 2rem;
+        color: white;
+        animation: fadeInUp 0.5s ease-out;
+        box-shadow: 0 20px 40px -10px rgba(30,58,138,0.4);
+        border: 1px solid rgba(96,165,250,0.3);
+    }
+    
+    .result-neutral {
+        background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
+        border-radius: 24px;
+        padding: 2rem;
+        color: white;
+        animation: fadeInUp 0.5s ease-out;
+        box-shadow: 0 20px 40px -10px rgba(4,120,87,0.4);
+        border: 1px solid rgba(52,211,153,0.3);
+    }
+    
+    /* Floating metrics */
+    .metric-3d {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 20px;
+        padding: 1.25rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: 1px solid #e2e8f0;
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    .metric-3d:hover {
+        transform: translateY(-3px);
+    }
+    
+    .metric-value-3d {
         font-size: 2rem;
-        font-weight: bold;
+        font-weight: 700;
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
     }
     
-    /* Alert boxes */
-    .crisis-alert {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        border-radius: 12px;
-        padding: 1.5rem;
-        color: white;
-        text-align: center;
+    .metric-label-3d {
+        font-size: 0.7rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+        letter-spacing: 0.5px;
     }
     
-    .support-alert {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        border-radius: 12px;
-        padding: 1.5rem;
-        color: white;
-        text-align: center;
-    }
-    
-    .neutral-alert {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-        border-radius: 12px;
-        padding: 1.5rem;
-        color: white;
-        text-align: center;
-    }
-    
-    /* Sidebar styling */
-    .sidebar .sidebar-content {
-        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-    }
-    
-    /* Button styling */
+    /* 3D Button */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         color: white;
         border: none;
-        padding: 0.5rem 2rem;
-        border-radius: 25px;
-        font-weight: bold;
-        transition: transform 0.2s;
+        padding: 0.6rem 2rem;
+        border-radius: 40px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        width: 100%;
+        box-shadow: 0 4px 14px 0 rgba(59,130,246,0.4);
     }
     
     .stButton > button:hover {
-        transform: scale(1.02);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px 0 rgba(59,130,246,0.5);
+    }
+    
+    /* Text area with 3D effect */
+    .stTextArea textarea {
+        border-radius: 20px;
+        border: 1.5px solid #e2e8f0;
+        font-size: 1rem;
+        line-height: 1.6;
+        transition: all 0.3s ease;
+        background: white;
+    }
+    
+    .stTextArea textarea:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        transform: scale(1.01);
+    }
+    
+    /* Confidence bar 3D */
+    .confidence-3d {
+        background: #e2e8f0;
+        border-radius: 20px;
+        height: 12px;
+        overflow: hidden;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .confidence-fill {
+        height: 100%;
+        border-radius: 20px;
+        transition: width 0.8s cubic-bezier(0.34, 1.2, 0.64, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .confidence-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+    
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+        border-right: none;
+    }
+    
+    [data-testid="stSidebar"] * {
+        color: #e2e8f0;
     }
     
     /* Footer */
     .footer {
         text-align: center;
-        padding: 2rem;
-        color: #6c757d;
-        border-top: 1px solid #dee2e6;
+        padding: 1.5rem;
+        color: #94a3b8;
+        font-size: 0.7rem;
+        border-top: 1px solid #e2e8f0;
         margin-top: 2rem;
     }
     
-    /* Text input styling */
-    .stTextArea textarea {
-        border-radius: 12px;
-        border: 2px solid #e0e0e0;
-        font-size: 1rem;
+    /* Model selector pills */
+    .model-pill {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        margin: 0.25rem;
+        border-radius: 40px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: #f1f5f9;
+        color: #1e293b;
     }
     
-    /* Tabs styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        font-size: 1rem;
-        font-weight: bold;
+    .model-pill-active {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(59,130,246,0.3);
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================================
-# HELPER FUNCTIONS
+# TEXT CLEANING & HELPERS
 # ============================================================================
-
 SLANG = {
     'bc': 'because', 'u': 'you', 'r': 'are', 'w/': 'with',
     'idk': 'i do not know', 'rn': 'right now', 'smh': 'disappointed',
     'lol': '', 'tbh': 'to be honest', 'ngl': 'not going to lie',
-    'imo': 'in my opinion', 'btw': 'by the way', 'pls': 'please',
-    'plz': 'please', 'thx': 'thanks', 'ty': 'thank you',
-    'ur': 'your', 'u r': 'you are'
+    'imo': 'in my opinion', 'btw': 'by the way'
 }
 
 CRISIS_KEYWORDS = [
     'suicide', 'kill myself', 'end my life', 'want to die', 
     'no reason to live', 'hopeless', 'worthless', 'cant go on',
-    'overdose', 'self harm', 'cutting', 'nothing left',
-    'give up', 'cannot breathe', 'falling apart', 'goodbye',
-    'last words', 'ending it', 'done with life'
-]
-
-SUPPORT_KEYWORDS = [
-    'here for you', 'you are not alone', 'reach out', 'support',
-    'recovery', 'getting better', 'therapy', 'counselor',
-    'hotline', 'help you', 'proud of you', 'keep going',
-    'you matter', 'stay strong', 'you can do this'
+    'overdose', 'self harm', 'cutting', 'nothing left', 'give up'
 ]
 
 def clean_text(text):
-    """Clean and preprocess text"""
-    if not text or text == "":
+    if not text:
         return ""
     text = str(text).lower().strip()
-    # Replace slang
     for k, v in SLANG.items():
         text = re.sub(r'\b' + re.escape(k) + r'\b', v, text)
-    # Remove special characters
     text = re.sub(r'[^\w\s]', ' ', text)
-    # Remove extra spaces
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
 def rule_based_detect(text):
-    """Rule-based detection for immediate response"""
     text_lower = text.lower()
-    
-    # Check for crisis keywords
     for kw in CRISIS_KEYWORDS:
         if kw in text_lower:
-            return "Crisis", 0.95
-    
-    # Check for support keywords
-    for kw in SUPPORT_KEYWORDS:
-        if kw in text_lower:
-            return "Support", 0.85
-    
+            return "Crisis", 0.92
     return None, 0.0
-
-def get_confidence_color(confidence):
-    """Get color based on confidence score"""
-    if confidence >= 0.9:
-        return "#28a745"  # Green
-    elif confidence >= 0.7:
-        return "#ffc107"  # Yellow
-    else:
-        return "#dc3545"  # Red
-
-def get_prediction_icon(prediction):
-    """Get emoji icon for prediction"""
-    icons = {
-        "Crisis": "⚠️",
-        "Support": "🤝",
-        "Neutral": "😊"
-    }
-    return icons.get(prediction, "📝")
-
-def get_crisis_resources():
-    """Return crisis resources"""
-    return {
-        "National Suicide Prevention Lifeline": "988",
-        "Crisis Text Line": "Text HOME to 741741",
-        "SAMHSA National Helpline": "1-800-662-4357",
-        "Veterans Crisis Line": "988 (Press 1)",
-        "Disaster Distress Helpline": "1-800-985-5990"
-    }
-
-def get_self_care_tips():
-    """Return self-care tips"""
-    return [
-        "🧘 Take deep breaths - inhale for 4, hold for 4, exhale for 4",
-        "💧 Drink a glass of water and stay hydrated",
-        "🚶 Take a short walk outside if possible",
-        "📝 Write down three things you're grateful for",
-        "🎵 Listen to your favorite calming music",
-        "📞 Call or text someone you trust",
-        "🛏️ Get adequate rest and sleep",
-        "🍎 Eat a nutritious meal"
-    ]
 
 # ============================================================================
 # LOAD MODELS
 # ============================================================================
-
 @st.cache_resource
 def load_models():
-    """Load all trained models and artifacts"""
-    try:
-        # Check for saved model files
-        model_files = [
-            'saved_models/lr_augmented.pkl',
-            'saved_models/tfidf_augmented.pkl',
-            'saved_models/label_encoder.pkl'
-        ]
-        
-        if all(os.path.exists(f) for f in model_files):
-            lr_model = joblib.load('saved_models/lr_augmented.pkl')
-            tfidf = joblib.load('saved_models/tfidf_augmented.pkl')
-            label_encoder = joblib.load('saved_models/label_encoder.pkl')
-            model_type = "Logistic Regression (Augmented)"
-        else:
-            # Use baseline models if augmented not available
-            lr_model = joblib.load('saved_models/lr_baseline.pkl')
-            tfidf = joblib.load('saved_models/tfidf_baseline.pkl')
-            label_encoder = joblib.load('saved_models/label_encoder.pkl')
-            model_type = "Logistic Regression (Baseline)"
-        
-        return lr_model, tfidf, label_encoder, model_type
+    models = {}
+    model_files = {
+        'LR': 'saved_models/lr_augmented.pkl',
+        'RF': 'saved_models/rf_augmented.pkl',
+        'GB': 'saved_models/gb_augmented.pkl'
+    }
     
-    except Exception as e:
-        st.error(f"Error loading models: {str(e)}")
-        return None, None, None, None
+    for name, path in model_files.items():
+        if os.path.exists(path):
+            models[name] = joblib.load(path)
+    
+    tfidf = None
+    le = None
+    
+    if os.path.exists('saved_models/tfidf_augmented.pkl'):
+        tfidf = joblib.load('saved_models/tfidf_augmented.pkl')
+    if os.path.exists('saved_models/label_encoder.pkl'):
+        le = joblib.load('saved_models/label_encoder.pkl')
+    
+    return models, tfidf, le
 
-def predict_text(text, model, tfidf, label_encoder):
-    """Make prediction on input text"""
-    if not text or text.strip() == "":
+def predict_text(text, model, tfidf, le):
+    if not text:
         return None, 0.0
     
-    # Clean text
     cleaned = clean_text(text)
-    
-    # Rule-based detection
     rule_pred, rule_conf = rule_based_detect(cleaned)
     
-    # Model prediction
     try:
         vec = tfidf.transform([cleaned])
-        pred_encoded = model.predict(vec)[0]
+        pred = model.predict(vec)[0]
         proba = model.predict_proba(vec).max()
-        pred_label = label_encoder.inverse_transform([pred_encoded])[0]
+        label = le.inverse_transform([pred])[0]
         
-        # Combine rule-based and model predictions
-        if rule_pred is not None and rule_conf > 0.8:
+        if rule_pred and rule_conf > 0.8:
             return rule_pred, max(rule_conf, proba)
-        return pred_label, proba
+        return label, proba
     except:
-        if rule_pred is not None:
+        if rule_pred:
             return rule_pred, rule_conf
         return "Neutral", 0.5
 
 # ============================================================================
+# LOAD MODELS
+# ============================================================================
+models, tfidf, le = load_models()
+
+# ============================================================================
 # SIDEBAR
 # ============================================================================
-
 with st.sidebar:
-    st.markdown("### 🧠 MindGuard")
-    st.markdown("---")
+    st.markdown("### MODEL")
     
-    # Model info
-    st.markdown("#### 🤖 Model Information")
-    lr_model, tfidf, label_encoder, model_type = load_models()
-    
-    if lr_model is not None:
-        st.success(f"✅ Model loaded: {model_type}")
-        st.info("📊 Model trained on 10,000+ mental health posts")
-        st.info("🎯 Accuracy: ~97% | F1-Score: ~0.95")
+    if models:
+        selected_model = st.selectbox("", list(models.keys()))
     else:
-        st.error("❌ Model not found. Please train the model first.")
+        selected_model = None
+        st.error("Models not found")
     
     st.markdown("---")
+    st.markdown("### CRISIS LINES")
+    st.markdown("**USA / CANADA**")
+    st.code("988", language=None)
+    st.caption("Suicide & Crisis Lifeline")
     
-    # Quick stats
-    st.markdown("#### 📈 Quick Stats")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Detection Accuracy", "97%", "✓")
-    with col2:
-        st.metric("Response Time", "< 1s", "⚡")
+    st.markdown("**TEXT LINE**")
+    st.code("Text HOME to 741741", language=None)
     
-    st.markdown("---")
+    st.markdown("**UK**")
+    st.code("111", language=None)
     
-    # Resources
-    st.markdown("#### 🆘 Crisis Resources")
-    resources = get_crisis_resources()
-    for name, number in resources.items():
-        st.markdown(f"**{name}**")
-        st.code(number, language=None)
-        st.markdown("---")
-    
-    st.markdown("#### 📞 International Helplines")
-    st.markdown("""
-    - **UK**: 111 (NHS Mental Health Triage)
-    - **Canada**: 1-833-456-4566
-    - **Australia**: 13 11 14
-    - **India**: 9152987821
-    - **International**: Find a helpline at `findahelpline.com`
-    """)
-    
-    st.markdown("---")
-    st.caption("⚠️ **Disclaimer**: This tool is for assistance only. In immediate danger, call emergency services (911/US, 999/UK, 112/EU).")
+    st.markdown("**AUSTRALIA**")
+    st.code("13 11 14", language=None)
 
 # ============================================================================
-# MAIN CONTENT
+# HEADER
 # ============================================================================
-
-# Header
 st.markdown("""
-<div class="main-header">
-    <h1>🧠 MindGuard</h1>
-    <p>AI-Powered Mental Health Crisis Detection & Support System</p>
-    <p style="font-size: 0.9rem; opacity: 0.8;">Real-time analysis of text for early crisis intervention</p>
+<div class="header-3d animated-container">
+    <h1>MindGuard</h1>
+    <p>Real-time mental health text analysis for early crisis detection</p>
 </div>
 """, unsafe_allow_html=True)
 
-# Create tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📝 Text Analysis", 
-    "📊 Dashboard", 
-    "ℹ️ About", 
-    "🆘 Resources", 
-    "💪 Self-Care"
-])
+# ============================================================================
+# MAIN LAYOUT
+# ============================================================================
+col_left, col_right = st.columns([2, 1.2])
+
+with col_left:
+    st.markdown('<div class="animated-container">', unsafe_allow_html=True)
+    st.markdown("### INPUT")
+    user_input = st.text_area(
+        "",
+        height=160,
+        placeholder="Paste or type text for analysis...",
+        key="input"
+    )
+    
+    analyze = st.button("ANALYZE", use_container_width=True)
+    
+    st.markdown("### EXAMPLES")
+    ex_cols = st.columns(3)
+    examples = [
+        "I feel hopeless and worthless. Nothing matters anymore.",
+        "I'm struggling with anxiety. Does anyone have coping advice?",
+        "New study shows meditation reduces depression symptoms by 40%."
+    ]
+    
+    for i, ex in enumerate(examples):
+        if ex_cols[i].button(f"Sample {i+1}", use_container_width=True):
+            user_input = ex
+            analyze = True
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col_right:
+    st.markdown('<div class="card-3d animated-container">', unsafe_allow_html=True)
+    st.markdown("### DETECTION")
+    st.markdown("""
+    <div style="margin-bottom: 1rem;">
+        <div style="font-size: 0.7rem; color: #64748b;">CRISIS</div>
+        <div style="font-size: 0.8rem;">Suicide, hopelessness, worthlessness, self-harm</div>
+    </div>
+    <div style="margin-bottom: 1rem;">
+        <div style="font-size: 0.7rem; color: #64748b;">SUPPORT</div>
+        <div style="font-size: 0.8rem;">Struggling, need help, coping, advice</div>
+    </div>
+    <div>
+        <div style="font-size: 0.7rem; color: #64748b;">NEUTRAL</div>
+        <div style="font-size: 0.8rem;">Information, research, general discussion</div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================================================
-# TAB 1: TEXT ANALYSIS
+# ANALYSIS
 # ============================================================================
-
-with tab1:
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown("### ✍️ Enter Text for Analysis")
-        st.markdown("Describe what you're feeling or paste a message to analyze:")
+if analyze and user_input:
+    if selected_model and models and tfidf and le:
         
-        user_input = st.text_area(
-            "",
-            height=200,
-            placeholder="Example: 'I've been feeling really down lately. Nothing seems to matter anymore and I don't see the point in continuing...'",
-            key="text_input"
-        )
+        with st.spinner("Processing..."):
+            time.sleep(0.15)
+            model = models[selected_model]
+            prediction, confidence = predict_text(user_input, model, tfidf, le)
         
-        col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 1])
-        with col_btn2:
-            analyze_btn = st.button("🔍 Analyze", use_container_width=True)
-    
-    with col2:
-        st.markdown("### 📋 Example Texts")
-        st.markdown("Try these examples:")
-        
-        examples = [
-            ("😔 Crisis", "I can't do this anymore. Everything hurts and I just want it to end."),
-            ("🤝 Support", "I'm here for you. You're not alone in this journey."),
-            ("📝 Neutral", "Today I went to therapy and learned some new coping strategies."),
-            ("⚠️ Severe", "I've written my goodbye letters. I think I'm done."),
-            ("💪 Recovery", "One month clean from self-harm. It's hard but I'm proud of myself.")
-        ]
-        
-        for label, text in examples:
-            if st.button(label, key=f"ex_{label}"):
-                user_input = text
-                analyze_btn = True
-        
-        st.markdown("---")
-        st.info("📝 **Tip**: Be specific about feelings. The more context, the better the analysis.")
-
-    # Analysis results
-    if analyze_btn and user_input:
-        if lr_model is not None:
-            with st.spinner("🧠 Analyzing text..."):
-                prediction, confidence = predict_text(user_input, lr_model, tfidf, label_encoder)
-                
-                # Display results
-                st.markdown("### 🔍 Analysis Results")
-                
-                # Result card based on prediction
-                if prediction == "Crisis":
-                    st.markdown("""
-                    <div class="crisis-alert">
-                        <h2>⚠️ CRISIS ALERT ⚠️</h2>
-                        <p style="font-size: 1.2rem;">The text contains indicators of a potential mental health crisis.</p>
-                        <p>Immediate attention and support are recommended.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Show crisis resources immediately
-                    with st.expander("🆘 Immediate Help Resources", expanded=True):
-                        st.markdown("##### Please reach out to these resources immediately:")
-                        for name, number in get_crisis_resources().items():
-                            st.markdown(f"- **{name}**: `{number}`")
-                        st.warning("**If you or someone else is in immediate danger, please call emergency services (911) right away.**")
-                
-                elif prediction == "Support":
-                    st.markdown("""
-                    <div class="support-alert">
-                        <h2>🤝 Support Needed</h2>
-                        <p style="font-size: 1.2rem;">The text shows signs of distress and would benefit from supportive intervention.</p>
-                        <p>Offering support and listening without judgment can make a difference.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                else:
-                    st.markdown("""
-                    <div class="neutral-alert">
-                        <h2>😊 Neutral / Informational</h2>
-                        <p style="font-size: 1.2rem;">The text appears to be neutral or informational in nature.</p>
-                        <p>Continue providing mental health awareness and resources.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Confidence and details
-                col1, col2, col3 = st.columns(3)
-                color = get_confidence_color(confidence)
-                
-                with col1:
-                    st.metric("Prediction", f"{get_prediction_icon(prediction)} {prediction}", 
-                             delta=None, delta_color="normal")
-                
-                with col2:
-                    st.metric("Confidence", f"{confidence:.1%}")
-                
-                with col3:
-                    st.metric("Response Time", "< 1 second", "Real-time")
-                
-                # Additional insights
-                st.markdown("---")
-                st.markdown("#### 📊 Analysis Details")
-                
-                # Word count
-                words = user_input.split()
-                st.caption(f"Text length: {len(words)} words | {len(user_input)} characters")
-                
-                # Keyword detection
-                detected_keywords = []
-                text_lower = user_input.lower()
-                for kw in CRISIS_KEYWORDS:
-                    if kw in text_lower:
-                        detected_keywords.append(kw)
-                
-                if detected_keywords:
-                    st.warning(f"**Detected crisis keywords**: {', '.join(detected_keywords[:5])}")
-                
-                # Next steps
-                st.markdown("---")
-                st.markdown("#### 📋 Recommended Next Steps")
-                
-                if prediction == "Crisis":
-                    st.markdown("""
-                    1. 🚨 **Immediate**: Call a crisis helpline or emergency services
-                    2. 👥 **Reach out**: Contact a trusted friend, family member, or mental health professional
-                    3. 🏥 **Seek care**: Visit your nearest emergency room if feeling unsafe
-                    4. 📞 **Follow up**: Schedule an appointment with a mental health provider
-                    """)
-                elif prediction == "Support":
-                    st.markdown("""
-                    1. 💬 **Listen actively**: Provide a non-judgmental space for sharing
-                    2. 🤗 **Offer support**: Ask "How can I support you right now?"
-                    3. 📞 **Encourage help**: Suggest speaking with a counselor or therapist
-                    4. 📱 **Share resources**: Provide crisis hotline numbers for future reference
-                    """)
-                else:
-                    st.markdown("""
-                    1. 📚 **Continue education**: Share mental health awareness resources
-                    2. 💪 **Promote wellness**: Encourage self-care practices
-                    3. 🗓️ **Regular check-ins**: Maintain ongoing support and communication
-                    4. 🌈 **Build community**: Connect with mental health support groups
-                    """)
-                
+        # Result card with 3D animation
+        if prediction == "Crisis":
+            st.markdown("""
+            <div class="result-crisis animated-container">
+                <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 0.5rem;">CRISIS DETECTED</div>
+                <div style="font-size: 0.9rem; opacity: 0.9;">This text contains indicators of a potential mental health crisis.</div>
+                <div style="margin-top: 1rem; font-size: 0.8rem; opacity: 0.8;">Immediate support recommended.</div>
+            </div>
+            """, unsafe_allow_html=True)
+        elif prediction == "Support":
+            st.markdown("""
+            <div class="result-support animated-container">
+                <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 0.5rem;">SUPPORT INDICATED</div>
+                <div style="font-size: 0.9rem; opacity: 0.9;">This text suggests the user may benefit from supportive intervention.</div>
+                <div style="margin-top: 1rem; font-size: 0.8rem; opacity: 0.8;">Active listening is recommended.</div>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.error("❌ Models not loaded. Please ensure models are trained and saved in the 'saved_models' directory.")
-    
-    elif analyze_btn and not user_input:
-        st.warning("⚠️ Please enter some text to analyze.")
-
-# ============================================================================
-# TAB 2: DASHBOARD
-# ============================================================================
-
-with tab2:
-    st.markdown("### 📊 Analytics Dashboard")
-    
-    # Load historical data if available
-    try:
-        if os.path.exists('saved_models/annotated_samples.csv'):
-            df_history = pd.read_csv('saved_models/annotated_samples.csv')
-            
-            # Create metrics row
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Total Analyses", len(df_history), "All time")
-            with col2:
-                crisis_count = len(df_history[df_history['final_annotation'] == 'Crisis'])
-                st.metric("Crisis Detections", crisis_count, 
-                         f"{(crisis_count/len(df_history)*100):.1f}%")
-            with col3:
-                support_count = len(df_history[df_history['final_annotation'] == 'Support'])
-                st.metric("Support Needed", support_count,
-                         f"{(support_count/len(df_history)*100):.1f}%")
-            with col4:
-                accuracy = df_history['annotation_match'].mean()
-                st.metric("Model Accuracy", f"{accuracy:.1%}", 
-                         "vs human annotation")
-            
-            # Distribution chart
-            st.markdown("#### 📈 Prediction Distribution")
-            fig = px.pie(
-                df_history, 
-                names='final_annotation',
-                title='Distribution of Predictions',
-                color='final_annotation',
-                color_discrete_map={'Crisis': '#f5576c', 'Support': '#4facfe', 'Neutral': '#43e97b'},
-                hole=0.4
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Annotation agreement
-            st.markdown("#### 🎯 Model Agreement Analysis")
-            agree_rate = df_history['annotation_match'].mean()
-            fig2 = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=agree_rate * 100,
-                title={'text': "Model vs Human Agreement Rate (%)"},
-                gauge={'axis': {'range': [0, 100]},
-                       'bar': {'color': "#667eea"},
-                       'steps': [
-                           {'range': [0, 50], 'color': "#f8d7da"},
-                           {'range': [50, 85], 'color': "#fff3cd"},
-                           {'range': [85, 100], 'color': "#d4edda"}],
-                       'threshold': {'line': {'color': "red", 'width': 4},
-                                    'thickness': 0.75, 'value': 90}}))
-            fig2.update_layout(height=300)
-            st.plotly_chart(fig2, use_container_width=True)
-            
-            # Sample of recent analyses
-            st.markdown("#### 📋 Recent Analyses")
-            st.dataframe(
-                df_history[['text_clean', 'final_annotation', 'annotation_match']].head(10),
-                use_container_width=True,
-                hide_index=True
-            )
-            
+            st.markdown("""
+            <div class="result-neutral animated-container">
+                <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 0.5rem;">NEUTRAL / INFORMATIONAL</div>
+                <div style="font-size: 0.9rem; opacity: 0.9;">This text appears to be neutral or informational in nature.</div>
+                <div style="margin-top: 1rem; font-size: 0.8rem; opacity: 0.8;">Continue providing awareness.</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Metrics row with 3D floating effect
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown(f"""
+            <div class="metric-3d">
+                <div class="metric-value-3d">{prediction}</div>
+                <div class="metric-label-3d">CLASSIFICATION</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div class="metric-3d">
+                <div class="metric-value-3d">{confidence:.1%}</div>
+                <div class="metric-label-3d">CONFIDENCE</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            word_count = len(user_input.split())
+            st.markdown(f"""
+            <div class="metric-3d">
+                <div class="metric-value-3d">{word_count}</div>
+                <div class="metric-label-3d">WORDS</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col4:
+            char_count = len(user_input)
+            st.markdown(f"""
+            <div class="metric-3d">
+                <div class="metric-value-3d">{char_count}</div>
+                <div class="metric-label-3d">CHARACTERS</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # 3D Confidence bar
+        bar_color = "#ef4444" if prediction == "Crisis" else "#3b82f6" if prediction == "Support" else "#10b981"
+        st.markdown("### CONFIDENCE")
+        st.markdown(f"""
+        <div class="confidence-3d">
+            <div class="confidence-fill" style="width: {confidence*100}%; background: {bar_color};"></div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Detected keywords
+        detected = []
+        text_lower = user_input.lower()
+        for kw in CRISIS_KEYWORDS:
+            if kw in text_lower:
+                detected.append(kw)
+        
+        if detected:
+            st.markdown("### KEY INDICATORS")
+            st.markdown(f"<div style='background: #fef2f2; border-radius: 16px; padding: 0.75rem; color: #991b1b; font-size: 0.85rem;'>{', '.join(detected[:6])}</div>", unsafe_allow_html=True)
+        
+        # Response guide
+        st.markdown("### RESPONSE")
+        if prediction == "Crisis":
+            st.info("Contact a crisis helpline immediately. Ensure the person is not alone.")
+        elif prediction == "Support":
+            st.info("Listen without judgment. Validate their feelings. Ask how you can help.")
         else:
-            st.info("📊 No historical data available yet. Start analyzing text to build your dashboard.")
-            
-            # Show placeholder charts
-            st.markdown("#### 📈 Sample Distribution (Coming Soon)")
-            fig = go.Figure(data=[go.Pie(labels=['Crisis', 'Support', 'Neutral'], 
-                                        values=[11, 20, 69],
-                                        marker_colors=['#f5576c', '#4facfe', '#43e97b'])])
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-            
-    except Exception as e:
-        st.warning(f"Could not load historical data: {str(e)}")
+            st.info("Provide mental health resources. Encourage self-care practices.")
+        
+    else:
+        st.error("Models not available.")
+
+elif analyze and not user_input:
+    st.warning("Please enter text for analysis.")
 
 # ============================================================================
-# TAB 3: ABOUT
+# RESOURCES SECTION
 # ============================================================================
+st.markdown("---")
+st.markdown("### HELPLINES")
 
-with tab3:
-    st.markdown("### ℹ️ About MindGuard")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown("""
-        #### 🧠 What is MindGuard?
-        
-        MindGuard is an AI-powered mental health crisis detection system designed to identify 
-        potential crisis situations in text-based communications in real-time. The system uses 
-        advanced machine learning to analyze language patterns and provide immediate risk assessment.
-        
-        #### 🎯 Key Features
-        
-        - **Real-time Analysis**: Instant text processing and risk assessment
-        - **Multi-label Classification**: Categorizes text as Crisis, Support, or Neutral
-        - **High Accuracy**: 97% accuracy with 95% macro F1-score
-        - **Rule-based Enhancement**: Combines ML with domain-specific keyword detection
-        - **Crisis Resources**: Immediate access to emergency helplines and support
-        
-        #### 📊 Model Performance
-        
-        | Metric | Value |
-        |--------|-------|
-        | Accuracy | 97.4% |
-        | Macro F1 | 95.4% |
-        | Crisis Recall | 87.3% |
-        | Crisis Precision | 98.4% |
-        | Response Time | < 1 second |
-        
-        #### 🔬 Methodology
-        
-        The system uses a combination of:
-        1. **Natural Language Processing**: TF-IDF vectorization with n-gram features
-        2. **Machine Learning**: Logistic Regression with balanced class weights
-        3. **Data Augmentation**: Text augmentation and SMOTE for class imbalance
-        4. **Rule-based Detection**: Crisis keyword matching for immediate response
-        """)
-    
-    with col2:
-        st.markdown("#### 🛠️ Technologies Used")
-        st.markdown("""
-        - **Python 3.10+**
-        - **Streamlit** (Web Interface)
-        - **Scikit-learn** (ML Models)
-        - **Pandas/NumPy** (Data Processing)
-        - **Plotly** (Visualizations)
-        - **NLTK** (Text Processing)
-        - **imbalanced-learn** (SMOTE)
-        - **nlpaug** (Data Augmentation)
-        """)
-        
-        st.markdown("---")
-        st.markdown("#### 👨‍💻 Development")
-        st.markdown("""
-        - **Dataset**: 10,000+ mental health forum posts
-        - **Training**: 80/20 train-test split with stratification
-        - **Validation**: 5-fold cross-validation
-        - **Fairness Audit**: Per-group performance analysis
-        """)
-        
-        st.markdown("---")
-        st.markdown("#### 📝 License")
-        st.markdown("© 2024 MindGuard | Educational/Research Use")
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown("**United States**")
+    st.code("988", language=None)
+with col2:
+    st.markdown("**Crisis Text Line**")
+    st.code("Text HOME to 741741", language=None)
+with col3:
+    st.markdown("**United Kingdom**")
+    st.code("111", language=None)
+with col4:
+    st.markdown("**Australia**")
+    st.code("13 11 14", language=None)
 
 # ============================================================================
-# TAB 4: RESOURCES
+# SELF-CARE TECHNIQUES
 # ============================================================================
-
-with tab4:
-    st.markdown("### 🆘 Mental Health Resources")
-    
-    # Crisis resources
-    st.markdown("#### 🚨 Crisis Helplines (24/7)")
-    
-    resources_df = pd.DataFrame([
-        {"Service": "National Suicide Prevention Lifeline", "Number": "988", "Country": "USA"},
-        {"Service": "Crisis Text Line", "Number": "Text HOME to 741741", "Country": "USA/Canada"},
-        {"Service": "SAMHSA National Helpline", "Number": "1-800-662-4357", "Country": "USA"},
-        {"Service": "Veterans Crisis Line", "Number": "988 (Press 1)", "Country": "USA"},
-        {"Service": "Disaster Distress Helpline", "Number": "1-800-985-5990", "Country": "USA"},
-        {"Service": "NHS Mental Health Helpline", "Number": "111", "Country": "UK"},
-        {"Service": "Samaritans", "Number": "116 123", "Country": "UK"},
-        {"Service": "Crisis Services Canada", "Number": "1-833-456-4566", "Country": "Canada"},
-        {"Service": "Lifeline Australia", "Number": "13 11 14", "Country": "Australia"},
-        {"Service": "iCall", "Number": "9152987821", "Country": "India"},
-    ])
-    
-    st.dataframe(resources_df, use_container_width=True, hide_index=True)
-    
-    # Online resources
-    st.markdown("#### 💻 Online Resources")
-    
+with st.expander("SELF-CARE TECHNIQUES"):
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("""
-        **Information & Education**
-        - [NAMI](https://nami.org) - National Alliance on Mental Illness
-        - [Mental Health America](https://mhanational.org)
-        - [WHO Mental Health](https://www.who.int/health-topics/mental-health)
-        - [NIH Mental Health](https://www.nimh.nih.gov)
-        - [Psych Central](https://psychcentral.com)
-        """)
+        st.markdown("**5-4-3-2-1 Grounding**")
+        st.caption("5 things you see | 4 you feel | 3 you hear | 2 you smell | 1 you taste")
+        
+        st.markdown("**Box Breathing**")
+        st.caption("Inhale 4s → Hold 4s → Exhale 4s → Hold 4s")
     
     with col2:
-        st.markdown("""
-        **Support Communities**
-        - [7 Cups](https://www.7cups.com) - Free emotional support
-        - [The Mighty](https://themighty.com) - Mental health community
-        - [Reddit r/mentalhealth](https://reddit.com/r/mentalhealth)
-        - [Support Groups Central](https://supportgroupscentral.com)
-        """)
-    
-    # Therapy directories
-    st.markdown("#### 🏥 Find a Therapist")
-    st.markdown("""
-    - [Psychology Today Therapist Directory](https://www.psychologytoday.com/us/therapists)
-    - [Open Path Collective](https://openpathcollective.org) - Affordable therapy
-    - [BetterHelp](https://www.betterhelp.com) - Online therapy
-    - [Talkspace](https://www.talkspace.com) - Online therapy
-    - [Inclusive Therapists](https://www.inclusivetherapists.com) - LGBTQ+ affirming
-    """)
-    
-    # Mobile apps
-    st.markdown("#### 📱 Mental Health Apps")
-    st.markdown("""
-    - **CBT Thought Diary**: Cognitive Behavioral Therapy tool
-    - **Calm**: Meditation and sleep
-    - **Headspace**: Mindfulness and meditation
-    - **Moodpath**: Depression and anxiety tracking
-    - **Sanvello**: Stress, anxiety, depression management
-    - **What's Up?**: CBT and ACT-based mental health app
-    """)
-
-# ============================================================================
-# TAB 5: SELF-CARE
-# ============================================================================
-
-with tab5:
-    st.markdown("### 💪 Self-Care & Coping Strategies")
-    
-    # Daily self-care tips
-    st.markdown("#### 🌟 Daily Self-Care Tips")
-    
-    tips = get_self_care_tips()
-    
-    cols = st.columns(2)
-    for i, tip in enumerate(tips):
-        with cols[i % 2]:
-            st.markdown(tip)
-    
-    # Grounding techniques
-    st.markdown("---")
-    st.markdown("#### 🌍 Grounding Techniques (5-4-3-2-1 Method)")
-    
-    st.markdown("""
-    When feeling overwhelmed, try the 5-4-3-2-1 grounding technique:
-    
-    - **5** things you can SEE around you
-    - **4** things you can TOUCH around you  
-    - **3** things you can HEAR around you
-    - **2** things you can SMELL around you
-    - **1** thing you can TASTE
-    
-    This technique helps bring you back to the present moment.
-    """)
-    
-    # Breathing exercise
-    st.markdown("---")
-    st.markdown("#### 🧘 Breathing Exercise (Square Breathing)")
-    
-    st.markdown("""
-    Try this simple breathing exercise:
-    
-    1. **Inhale** through your nose for 4 seconds
-    2. **Hold** your breath for 4 seconds
-    3. **Exhale** through your mouth for 4 seconds
-    4. **Hold** for 4 seconds
-    5. Repeat 5-10 times
-    
-    This technique activates the parasympathetic nervous system and reduces anxiety.
-    """)
-    
-    # Quick relaxation timer
-    st.markdown("---")
-    st.markdown("#### ⏱️ Quick Relaxation Timer")
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        minutes = st.selectbox("Select duration (minutes):", [1, 2, 5, 10], index=1)
-        if st.button("🧘 Start Breathing Exercise", use_container_width=True):
-            st.info(f"Take {minutes} minutes to focus on your breath. Close your eyes and breathe deeply.")
-            st.balloons()
-    
-    # Journaling prompt
-    st.markdown("---")
-    st.markdown("#### 📝 Journaling Prompt")
-    
-    journal_prompts = [
-        "What am I feeling right now, and what might be causing these feelings?",
-        "Three things I'm grateful for today are...",
-        "What would I say to a friend who was feeling this way?",
-        "What small step can I take today to feel better?",
-        "What has helped me cope in the past that I can try now?"
-    ]
-    
-    import random
-    prompt = random.choice(journal_prompts)
-    st.info(f"**Today's prompt**: {prompt}")
-    
-    # Crisis plan template
-    st.markdown("---")
-    with st.expander("📋 Create Your Safety Plan"):
-        st.markdown("""
-        ### My Personal Safety Plan
+        st.markdown("**Progressive Muscle Relaxation**")
+        st.caption("Tense and release each muscle group from toes to head")
         
-        **1. Warning Signs** (thoughts, feelings, behaviors that indicate crisis):
-        - 
-        
-        **2. Internal Coping Strategies** (things I can do alone):
-        - 
-        
-        **3. Social Support** (people who can help distract me):
-        - 
-        
-        **4. Professional Support** (therapists, helplines):
-        - 
-        
-        **5. Emergency Contacts**:
-        - **Crisis Helpline**: 
-        - **Emergency Services**: 911
-        
-        **6. Make Environment Safe**:
-        - 
-        """)
+        st.markdown("**Mindfulness**")
+        st.caption("Focus on present moment without judgment")
 
 # ============================================================================
 # FOOTER
 # ============================================================================
-
 st.markdown("""
 <div class="footer">
-    <p>🧠 MindGuard | AI-Powered Mental Health Crisis Detection System</p>
-    <p style="font-size: 0.8rem;">This tool is for educational and research purposes only. Not a substitute for professional mental health care.</p>
-    <p style="font-size: 0.8rem;">© 2024 MindGuard | Data sources: Mental health forums (anonymized)</p>
+    MindGuard | Real-time mental health crisis detection
 </div>
 """, unsafe_allow_html=True)
