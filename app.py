@@ -7,7 +7,6 @@ import joblib
 import os
 import plotly.express as px
 import plotly.graph_objects as go
-from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from collections import Counter
 import time
@@ -17,9 +16,21 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
 # Download NLTK data
-nltk.download('punkt', quiet=True)
-nltk.download('stopwords', quiet=True)
-nltk.download('punkt_tab', quiet=True)
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords', quiet=True)
+
+try:
+    from wordcloud import WordCloud
+    WORDCLOUD_AVAILABLE = True
+except ImportError:
+    WORDCLOUD_AVAILABLE = False
+    st.warning("WordCloud library not available. Install with: pip install wordcloud")
 
 # ============================================================================
 # PAGE CONFIGURATION
@@ -122,14 +133,14 @@ st.markdown("""
     .metric-3d {
         background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
         border-radius: 20px;
-        padding: 1.25rem;
+        padding: 1rem;
         text-align: center;
         transition: all 0.3s ease;
         border: 1px solid #e2e8f0;
     }
     
     .metric-value-3d {
-        font-size: 2rem;
+        font-size: 1.5rem;
         font-weight: 700;
         background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
         -webkit-background-clip: text;
@@ -138,7 +149,7 @@ st.markdown("""
     }
     
     .metric-label-3d {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         color: #64748b;
     }
     
@@ -211,20 +222,6 @@ st.markdown("""
         margin-top: 2rem;
     }
     
-    .model-tab {
-        padding: 0.5rem 1rem;
-        border-radius: 40px;
-        font-size: 0.8rem;
-        font-weight: 500;
-        text-align: center;
-        transition: all 0.2s ease;
-    }
-    
-    .model-active {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-    }
-    
     .eda-container {
         background: #f8fafc;
         border-radius: 16px;
@@ -244,7 +241,7 @@ SLANG = {
     'imo': 'in my opinion', 'btw': 'by the way'
 }
 
-STOP_WORDS = set(stopwords.words('english'))
+STOP_WORDS = set(stopwords.words('english')) if 'stopwords' in locals() else set()
 
 CRISIS_KEYWORDS = [
     'suicide', 'kill myself', 'end my life', 'want to die', 
@@ -264,14 +261,17 @@ def clean_text(text):
     return text.strip()
 
 def get_sentiment(text):
-    blob = TextBlob(text)
-    polarity = blob.sentiment.polarity
-    if polarity > 0.1:
-        return "Positive", polarity
-    elif polarity < -0.1:
-        return "Negative", polarity
-    else:
-        return "Neutral", polarity
+    try:
+        blob = TextBlob(text)
+        polarity = blob.sentiment.polarity
+        if polarity > 0.1:
+            return "Positive", polarity
+        elif polarity < -0.1:
+            return "Negative", polarity
+        else:
+            return "Neutral", polarity
+    except:
+        return "Neutral", 0.0
 
 def rule_based_detect(text):
     text_lower = text.lower()
@@ -294,15 +294,24 @@ def load_traditional_models():
     
     for name, path in model_files.items():
         if os.path.exists(path):
-            models[name] = joblib.load(path)
+            try:
+                models[name] = joblib.load(path)
+            except:
+                pass
     
     tfidf = None
     le = None
     
     if os.path.exists('saved_models/tfidf_augmented.pkl'):
-        tfidf = joblib.load('saved_models/tfidf_augmented.pkl')
+        try:
+            tfidf = joblib.load('saved_models/tfidf_augmented.pkl')
+        except:
+            pass
     if os.path.exists('saved_models/label_encoder.pkl'):
-        le = joblib.load('saved_models/label_encoder.pkl')
+        try:
+            le = joblib.load('saved_models/label_encoder.pkl')
+        except:
+            pass
     
     return models, tfidf, le
 
@@ -319,10 +328,9 @@ def load_pretrained_models():
         models['DistilBERT'] = pipeline(
             "text-classification", 
             model="distilbert-base-uncased-finetuned-sst-2-english",
-            device=-1  # CPU
+            device=-1
         )
     except Exception as e:
-        st.warning(f"DistilBERT not available: {str(e)}")
         models['DistilBERT'] = None
     
     try:
@@ -334,7 +342,6 @@ def load_pretrained_models():
             device=-1
         )
     except Exception as e:
-        st.warning(f"RoBERTa not available: {str(e)}")
         models['RoBERTa'] = None
     
     return models
@@ -344,17 +351,16 @@ def predict_with_pretrained(text, model, model_name):
         return "Neutral", 0.5
     
     try:
-        result = model(text[:512])[0]  # Truncate for length limits
+        result = model(text[:512])[0]
         label = result['label']
         score = result['score']
         
-        # Map to MindGuard categories
         if model_name == 'DistilBERT':
             if label == 'POSITIVE':
                 return "Neutral", score
             else:
                 return "Support", score
-        else:  # RoBERTa emotion
+        else:
             if label in ['anger', 'fear', 'sadness']:
                 return "Crisis", score
             elif label in ['joy', 'surprise']:
@@ -371,23 +377,6 @@ def get_word_frequencies(text):
     words = re.findall(r'\b[a-z]+\b', text.lower())
     words = [w for w in words if w not in STOP_WORDS and len(w) > 2]
     return Counter(words).most_common(15)
-
-def generate_wordcloud(text):
-    words = re.findall(r'\b[a-z]+\b', text.lower())
-    words = [w for w in words if w not in STOP_WORDS and len(w) > 2]
-    word_string = ' '.join(words)
-    
-    if not word_string:
-        return None
-    
-    wordcloud = WordCloud(
-        width=800, height=400,
-        background_color='white',
-        colormap='Blues',
-        max_words=50
-    ).generate(word_string)
-    
-    return wordcloud
 
 def get_text_stats(text):
     words = text.split()
@@ -408,18 +397,15 @@ def get_text_stats(text):
 def clean_dataframe(df):
     df_clean = df.copy()
     
-    # Remove duplicates
     if 'text' in df_clean.columns:
         df_clean = df_clean.drop_duplicates(subset=['text'])
     
-    # Handle missing values
     for col in df_clean.columns:
         if df_clean[col].dtype == 'object':
             df_clean[col] = df_clean[col].fillna('Unknown')
         else:
             df_clean[col] = df_clean[col].fillna(df_clean[col].median())
     
-    # Clean text if exists
     if 'text' in df_clean.columns:
         df_clean['text_clean'] = df_clean['text'].apply(lambda x: clean_text(str(x)) if pd.notna(x) else '')
         df_clean['text_length'] = df_clean['text_clean'].apply(len)
@@ -430,7 +416,6 @@ def create_eda_plots(df):
     plots = []
     
     if 'label' in df.columns:
-        # Label distribution
         label_counts = df['label'].value_counts()
         fig1 = go.Figure(data=[go.Pie(
             labels=label_counts.index,
@@ -442,7 +427,6 @@ def create_eda_plots(df):
         plots.append(fig1)
     
     if 'text_length' in df.columns:
-        # Text length distribution
         fig2 = go.Figure(data=[go.Histogram(
             x=df['text_length'],
             marker_color='#3b82f6',
@@ -452,7 +436,6 @@ def create_eda_plots(df):
         plots.append(fig2)
     
     if 'label' in df.columns and 'text_length' in df.columns:
-        # Box plot by label
         fig3 = go.Figure()
         for label in df['label'].unique():
             subset = df[df['label'] == label]['text_length']
@@ -564,16 +547,13 @@ with tab1:
             with st.spinner("Processing..."):
                 time.sleep(0.15)
                 
-                # Traditional model prediction
                 if selected_model in traditional_models:
                     model = traditional_models[selected_model]
                     prediction, confidence = predict_text(user_input, model, tfidf, le)
                 else:
-                    # Pretrained model prediction
                     pt_model = pretrained_models.get(selected_model)
                     prediction, confidence = predict_with_pretrained(user_input, pt_model, selected_model)
             
-            # Result card
             if prediction == "Crisis":
                 st.markdown("""
                 <div class="result-crisis">
@@ -646,24 +626,12 @@ with tab1:
             
             # Sentiment analysis
             sentiment, polarity = get_sentiment(user_input)
-            sentiment_color = "#ef4444" if sentiment == "Negative" else "#3b82f6" if sentiment == "Positive" else "#10b981"
             st.markdown(f"""
             <div class="metric-3d" style="margin-top: 0.5rem;">
                 <div class="metric-value-3d">{sentiment}</div>
                 <div class="metric-label-3d">SENTIMENT (Polarity: {polarity:.2f})</div>
             </div>
             """, unsafe_allow_html=True)
-            
-            # Word cloud
-            st.markdown("### WORD CLOUD")
-            wc = generate_wordcloud(user_input)
-            if wc:
-                fig, ax = plt.subplots(figsize=(10, 5))
-                ax.imshow(wc, interpolation='bilinear')
-                ax.axis('off')
-                st.pyplot(fig)
-            else:
-                st.info("Not enough words for word cloud")
             
             # Top words
             st.markdown("### TOP FREQUENT WORDS")
@@ -734,7 +702,6 @@ with tab2:
             st.markdown("#### Cleaned Data Sample")
             st.dataframe(df_clean.head(), use_container_width=True)
             
-            # Download button
             csv = df_clean.to_csv(index=False)
             st.download_button("DOWNLOAD CLEANED DATA", csv, "cleaned_data.csv", "text/csv")
 
@@ -749,33 +716,28 @@ with tab3:
     if eda_file:
         df_eda = pd.read_csv(eda_file)
         
-        # Basic info
         col1, col2 = st.columns(2)
         with col1:
             st.metric("Rows", df_eda.shape[0])
         with col2:
             st.metric("Columns", df_eda.shape[1])
         
-        # Data types
         st.markdown("#### Data Types")
         dtype_df = pd.DataFrame(df_eda.dtypes.reset_index())
         dtype_df.columns = ['Column', 'Data Type']
         st.dataframe(dtype_df, use_container_width=True)
         
-        # Descriptive stats for numeric columns
         numeric_cols = df_eda.select_dtypes(include=[np.number]).columns.tolist()
         if numeric_cols:
             st.markdown("#### Descriptive Statistics")
             st.dataframe(df_eda[numeric_cols].describe(), use_container_width=True)
         
-        # EDA Plots
         st.markdown("#### Visualizations")
         plots = create_eda_plots(df_eda)
         
         for plot in plots:
             st.plotly_chart(plot, use_container_width=True)
         
-        # Correlation matrix for numeric columns
         if len(numeric_cols) >= 2:
             st.markdown("#### Correlation Matrix")
             corr = df_eda[numeric_cols].corr()
@@ -807,7 +769,6 @@ with tab4:
         
         results = []
         
-        # Traditional models
         for name, model in traditional_models.items():
             pred, conf = predict_text(comparison_text, model, tfidf, le)
             results.append({
@@ -817,7 +778,6 @@ with tab4:
                 'Confidence': f"{conf:.1%}"
             })
         
-        # Pretrained models
         for name, model in pretrained_models.items():
             if model:
                 pred, conf = predict_with_pretrained(comparison_text, model, name)
@@ -828,7 +788,6 @@ with tab4:
                     'Confidence': f"{conf:.1%}"
                 })
         
-        # Rule-based
         rule_pred, rule_conf = rule_based_detect(comparison_text)
         results.append({
             'Model': 'Rule-Based',
@@ -839,7 +798,6 @@ with tab4:
         
         results_df = pd.DataFrame(results)
         
-        # Color coding for predictions
         def color_pred(val):
             if val == 'Crisis':
                 return 'color: #ef4444; font-weight: bold'
@@ -851,7 +809,6 @@ with tab4:
         styled_df = results_df.style.applymap(color_pred, subset=['Prediction'])
         st.dataframe(styled_df, use_container_width=True, hide_index=True)
         
-        # Agreement analysis
         st.markdown("#### Agreement Analysis")
         predictions = results_df['Prediction'].tolist()
         majority = max(set(predictions), key=predictions.count)
@@ -863,7 +820,6 @@ with tab4:
         with col2:
             st.metric("Agreement Rate", f"{agreement:.0%}")
         
-        # Visualization
         fig = go.Figure(data=[
             go.Bar(
                 x=results_df['Model'],
