@@ -1,7 +1,13 @@
 streamlit
-numpy
 pandas
+numpy
+joblib
+sentence-transformers
+matplotlib
+seaborn
 plotly
+openpyxl
+scikit-learn
+pydub
+SpeechRecognition
 textblob
-nltk
-whisper
