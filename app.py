@@ -80,7 +80,7 @@ def process_audio_to_text(audio_file):
         audio = audio.export(audio_path, format="wav")
 
         # Load the Whisper model
-        model = whisper.load_model("base") # Using a small model for faster inference
+        model = whisper.load_model("medium") # Using the medium model for inference
 
         # Transcribe the audio
         result = model.transcribe(audio_path)
@@ -209,7 +209,7 @@ st.markdown("An integrated application for mental health crisis detection and da
 
 if choice == "Mental Health Crisis Detection (Text)":
     st.header("Mental Health Crisis Detection from Text")
-    user_text = st.text_area("Enter text here:", "I feel very distressed and can't sleep.")
+    user_text = st.text_area("Enter text here:", "I feel very distressed and can\"t sleep.")
 
     if st.button("Analyze Text (SBERT)"):
         if user_text:
@@ -254,7 +254,7 @@ elif choice == "Mental Health Crisis Detection (Audio)":
 
 elif choice == "Comprehensive Text Analysis":
     st.header("Comprehensive Text Analysis")
-    text_to_analyze = st.text_area("Enter text for analysis:", "This is a sample text for sentiment and keyword analysis.")
+    text_to_analyze = st.text_area("Enter text here:", "This is a sample text for sentiment and keyword analysis.")
 
     if st.button("Analyze Text"):
         if text_to_analyze:
@@ -365,11 +365,11 @@ elif choice == "Current Usage Statistics":
 
 elif choice == "About & Help":
     st.header("About the Application & Help")
-    st.markdown("""
-    This application is designed to assist professionals in early detection of mental health crises using Artificial Intelligence.
-    - **Developer:** Manus AI
-    - **Models:** SBERT, Logistic Regression
-    """)
+st.markdown("""
+This application is designed to assist professionals in early detection of mental health crises using Artificial Intelligence.
+- **Developer:** Manus AI
+- **Models:** SBERT, Logistic Regression
+""")
 
 # --- Animations & Aesthetics ---
 # Animations removed for a more professional look
@@ -451,5 +451,6 @@ st.markdown("""
         background-color: #f6ffed;
         border-left: 5px solid #b7eb8f;
         color: #237804;
-    }
+}
 </style>
+""")
