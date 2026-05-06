@@ -11,9 +11,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 from io import BytesIO
 
-# For audio processing (will need to install pydub and speech_recognition)
-# import speech_recognition as sr
-# from pydub import AudioSegment
+import whisper
+import tempfile
+from pydub import AudioSegment
 
 # --- Configuration --- #
 st.set_page_config(
@@ -67,11 +67,30 @@ def predict_crisis_tfidf(text):
 
 # --- Audio Processing (Placeholder - requires external libraries) ---
 def process_audio_to_text(audio_file):
-    # This function would use speech_recognition and pydub
-    # For now, it's a placeholder.
-    st.warning("Audio to text conversion requires additional libraries (pydub, SpeechRecognition) and may not work directly in Streamlit Cloud without special setup.")
-    st.info("Using a default text for demonstration purposes.")
-    return "I feel very sad and hopeless, and I see no way out of this situation."
+    try:
+        # Save the uploaded audio file to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+            tmp_file.write(audio_file.read())
+            audio_path = tmp_file.name
+
+        # Convert audio to a compatible format if necessary (Whisper prefers WAV)
+        audio = AudioSegment.from_file(audio_path)
+        audio = audio.set_channels(1) # Mono channel
+        audio = audio.set_frame_rate(16000) # 16kHz sample rate
+        audio = audio.export(audio_path, format="wav")
+
+        # Load the Whisper model
+        model = whisper.load_model("base") # Using a small model for faster inference
+
+        # Transcribe the audio
+        result = model.transcribe(audio_path)
+        transcribed_text = result["text"]
+
+        os.remove(audio_path) # Clean up the temporary file
+        return transcribed_text
+    except Exception as e:
+        st.error(f"Error during audio transcription: {e}")
+        return ""
 
 # --- Data Cleaning & EDA Functions ---
 def perform_data_cleaning(df):
@@ -353,60 +372,84 @@ elif choice == "About & Help":
     """)
 
 # --- Animations & Aesthetics ---
-if st.sidebar.checkbox("Enable Snow Animation?"):
-    st.snow()
-if st.sidebar.checkbox("Enable Balloons Animation?"):
-    st.balloons()
+# Animations removed for a more professional look
 
 # --- Custom CSS for professional look ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+    @import url(\'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap\');
     
     html, body, [class*="css"]  {
-        font-family: 'Roboto', sans-serif;
+        font-family: \'Inter\', sans-serif;
         text-align: left;
+        color: #333333;
     }
     
     .main {
-        background-color: #f8f9fa;
+        background-color: #f0f2f5;
+        padding: 20px;
+        border-radius: 10px;
     }
     
     .stButton>button {
         width: 100%;
-        border-radius: 20px;
+        border-radius: 8px;
         height: 3em;
-        background-color: #007bff;
+        background-color: #4a90e2; /* A calming blue */
         color: white;
-        font-weight: bold;
+        font-weight: 600;
         border: none;
-        transition: 0.3s;
+        transition: all 0.3s ease-in-out;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     .stButton>button:hover {
-        background-color: #0056b3;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        background-color: #357ABD;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         transform: translateY(-2px);
     }
     
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        border-radius: 15px;
+        border-radius: 8px;
+        border: 1px solid #cccccc;
+        padding: 10px;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
     }
     
     .sidebar .sidebar-content {
-        background-image: linear-gradient(#2e3b4e, #1c2531);
-        color: white;
+        background-image: linear-gradient(to bottom, #ffffff, #f0f2f5);
+        color: #333333;
+        border-right: 1px solid #e0e0e0;
     }
     
     .css-17eq0hr {
         background-color: #ffffff;
-        border-radius: 15px;
+        border-radius: 10px;
         padding: 20px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
     }
     
     h1, h2, h3 {
         color: #2c3e50;
+        font-weight: 700;
+    }
+    .stAlert {
+        border-radius: 8px;
+    }
+    .stInfo {
+        background-color: #e6f7ff;
+        border-left: 5px solid #91d5ff;
+        color: #0056b3;
+    }
+    .stWarning {
+        background-color: #fffbe6;
+        border-left: 5px solid #ffe58f;
+        color: #ad8b00;
+    }
+    .stSuccess {
+        background-color: #f6ffed;
+        border-left: 5px solid #b7eb8f;
+        color: #237804;
     }
 </style>
-""", unsafe_allow_html=True)
