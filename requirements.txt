@@ -9,5 +9,8 @@ plotly
 openpyxl
 scikit-learn
 pydub
-SpeechRecognition
+openai-whisper
 textblob
+torch
+torchvision
+torchaudio
