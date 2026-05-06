@@ -23,22 +23,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Load Models (assuming models are in a 'saved_models' directory) ---
+# --- Load Models (assuming models are in a \'saved_models\' directory) ---
 @st.cache_resource
 def load_models():
     try:
         # Load the Sentence Transformer model
-        sbert_model_path = 'saved_models/sbert_encoder'
+        sbert_model_path = \'saved_models/sbert_encoder\'
         if not os.path.exists(sbert_model_path):
             st.error(f"مسار نموذج SBERT غير موجود: {sbert_model_path}")
             st.stop()
         sbert_model = SentenceTransformer(sbert_model_path)
 
         # Load other models and encoders
-        lr_augmented_model = joblib.load('saved_models/lr_augmented.pkl')
-        label_encoder = joblib.load('saved_models/label_encoder.pkl')
-        tfidf_augmented_vectorizer = joblib.load('saved_models/tfidf_augmented.pkl')
-        sbert_lr_model = joblib.load('saved_models/sbert_lr.pkl')
+        lr_augmented_model = joblib.load(\'saved_models/lr_augmented.pkl\')
+        label_encoder = joblib.load(\'saved_models/label_encoder.pkl\')
+        tfidf_augmented_vectorizer = joblib.load(\'saved_models/tfidf_augmented.pkl\')
+        sbert_lr_model = joblib.load(\'saved_models/sbert_lr.pkl\')
 
         return sbert_model, lr_augmented_model, label_encoder, tfidf_augmented_vectorizer, sbert_lr_model
     except Exception as e:
@@ -71,7 +71,7 @@ def predict_crisis_tfidf(text):
 # --- Audio Processing (Placeholder - requires external libraries) ---
 def process_audio_to_text(audio_file):
     # This function would use speech_recognition and pydub
-    # For now, it's a placeholder.
+    # For now, it\'s a placeholder.
     st.warning("تحويل الصوت إلى نص يتطلب مكتبات إضافية (pydub, SpeechRecognition) وقد لا يعمل مباشرة في بيئة Streamlit Cloud بدون إعدادات خاصة.")
     st.info("سيتم استخدام نص افتراضي لأغراض العرض التوضيحي.")
     return "أنا أشعر بالحزن الشديد واليأس، ولا أرى أي مخرج من هذا الوضع."
@@ -83,19 +83,19 @@ def perform_data_cleaning(df):
 
     # Handle missing values
     st.markdown("**التعامل مع القيم المفقودة:**")
-    missing_strategy = st.selectbox("اختر استراتيجية للقيم المفقودة:", ['لا شيء', 'إزالة الصفوف', 'ملء بالمتوسط', 'ملء بالوسيط', 'ملء بالوضع'])
-    if missing_strategy == 'إزالة الصفوف':
+    missing_strategy = st.selectbox("اختر استراتيجية للقيم المفقودة:", [\'لا شيء\', \'إزالة الصفوف\', \'ملء بالمتوسط\', \'ملء بالوسيط\', \'ملء بالوضع\'])
+    if missing_strategy == \'إزالة الصفوف\':
         df = df.dropna()
         st.success("تم إزالة الصفوف التي تحتوي على قيم مفقودة.")
-    elif missing_strategy == 'ملء بالمتوسط':
+    elif missing_strategy == \'ملء بالمتوسط\':
         for col in df.select_dtypes(include=np.number).columns:
             df[col] = df[col].fillna(df[col].mean())
         st.success("تم ملء القيم المفقودة بالمتوسط.")
-    elif missing_strategy == 'ملء بالوسيط':
+    elif missing_strategy == \'ملء بالوسيط\':
         for col in df.select_dtypes(include=np.number).columns:
             df[col] = df[col].fillna(df[col].median())
         st.success("تم ملء القيم المفقودة بالوسيط.")
-    elif missing_strategy == 'ملء بالوضع':
+    elif missing_strategy == \'ملء بالوضع\':
         for col in df.columns:
             df[col] = df[col].fillna(df[col].mode()[0])
         st.success("تم ملء القيم المفقودة بالوضع.")
@@ -118,54 +118,54 @@ def perform_eda_and_charts(df):
     st.write("**معلومات البيانات:**")
     buffer = BytesIO()
     df.info(buf=buffer)
-    st.text(buffer.getvalue().decode('utf-8'))
+    st.text(buffer.getvalue().decode(\'utf-8\'))
 
     st.write("**الرسوم البيانية:**")
-    chart_type = st.selectbox("اختر نوع الرسم البياني:", ['مخطط عمودي', 'مخطط تشتت', 'مخطط صندوقي', 'مخطط هيستوجرام', 'مصفوفة الارتباط'])
+    chart_type = st.selectbox("اختر نوع الرسم البياني:", [\'مخطط عمودي\', \'مخطط تشتت\', \'مخطط صندوقي\', \'مخطط هيستوجرام\', \'مصفوفة الارتباط\'])
 
-    if chart_type == 'مخطط عمودي':
-        categorical_cols = df.select_dtypes(include='object').columns
+    if chart_type == \'مخطط عمودي\':
+        categorical_cols = df.select_dtypes(include=\'object\').columns
         if len(categorical_cols) > 0:
             col = st.selectbox("اختر عمودًا فئويًا:", categorical_cols)
-            fig = px.bar(df, x=col, title=f'توزيع {col}')
+            fig = px.bar(df, x=col, title=f\'توزيع {col}\' )
             st.plotly_chart(fig)
         else:
             st.info("لا توجد أعمدة فئوية لإنشاء مخطط عمودي.")
 
-    elif chart_type == 'مخطط تشتت':
+    elif chart_type == \'مخطط تشتت\':
         numeric_cols = df.select_dtypes(include=np.number).columns
         if len(numeric_cols) >= 2:
             x_col = st.selectbox("اختر عمود المحور السيني (X):", numeric_cols, index=0)
             y_col = st.selectbox("اختر عمود المحور الصادي (Y):", numeric_cols, index=1 if len(numeric_cols) > 1 else 0)
-            fig = px.scatter(df, x=x_col, y=y_col, title=f'مخطط تشتت بين {x_col} و {y_col}')
+            fig = px.scatter(df, x=x_col, y=y_col, title=f\'مخطط تشتت بين {x_col} و {y_col}\' )
             st.plotly_chart(fig)
         else:
             st.info("لا توجد أعمدة رقمية كافية لإنشاء مخطط تشتت.")
 
-    elif chart_type == 'مخطط صندوقي':
+    elif chart_type == \'مخطط صندوقي\':
         numeric_cols = df.select_dtypes(include=np.number).columns
         if len(numeric_cols) > 0:
             col = st.selectbox("اختر عمودًا رقميًا:", numeric_cols)
-            fig = px.box(df, y=col, title=f'مخطط صندوقي لـ {col}')
+            fig = px.box(df, y=col, title=f\'مخطط صندوقي لـ {col}\' )
             st.plotly_chart(fig)
         else:
             st.info("لا توجد أعمدة رقمية لإنشاء مخطط صندوقي.")
 
-    elif chart_type == 'مخطط هيستوجرام':
+    elif chart_type == \'مخطط هيستوجرام\':
         numeric_cols = df.select_dtypes(include=np.number).columns
         if len(numeric_cols) > 0:
             col = st.selectbox("اختر عمودًا رقميًا:", numeric_cols)
-            fig = px.histogram(df, x=col, title=f'توزيع {col}')
+            fig = px.histogram(df, x=col, title=f\'توزيع {col}\' )
             st.plotly_chart(fig)
         else:
             st.info("لا توجد أعمدة رقمية لإنشاء مخطط هيستوجرام.")
 
-    elif chart_type == 'مصفوفة الارتباط':
+    elif chart_type == \'مصفوفة الارتباط\':
         numeric_df = df.select_dtypes(include=np.number)
         if not numeric_df.empty:
             corr_matrix = numeric_df.corr()
-            fig = go.Figure(data=go.Heatmap(z=corr_matrix.values, x=corr_matrix.columns, y=corr_matrix.columns, colorscale='Viridis'))
-            fig.update_layout(title='مصفوفة الارتباط')
+            fig = go.Figure(data=go.Heatmap(z=corr_matrix.values, x=corr_matrix.columns, y=corr_matrix.columns, colorscale=\'Viridis\'))
+            fig.update_layout(title=\'مصفوفة الارتباط\')
             st.plotly_chart(fig)
         else:
             st.info("لا توجد أعمدة رقمية لحساب مصفوفة الارتباط.")
@@ -200,7 +200,7 @@ if choice == "الكشف عن الأزمات النفسية (نص)":
             label, proba = predict_crisis_sbert(user_text)
             st.write(f"**التصنيف المتوقع:** {label}")
             st.write(f"**احتمالية التصنيف:** {proba[label_encoder.transform([label])[0]]:.2f}")
-            st.bar_chart(pd.DataFrame({'Label': label_encoder.classes_, 'Probability': proba}).set_index('Label'))
+            st.bar_chart(pd.DataFrame({\'Label\': label_encoder.classes_, \'Probability\': proba}).set_index(\'Label\'))
         else:
             st.warning("الرجاء إدخال نص للتحليل.")
 
@@ -209,7 +209,7 @@ if choice == "الكشف عن الأزمات النفسية (نص)":
             label, proba = predict_crisis_tfidf(user_text)
             st.write(f"**التصنيف المتوقع:** {label}")
             st.write(f"**احتمالية التصنيف:** {proba[label_encoder.transform([label])[0]]:.2f}")
-            st.bar_chart(pd.DataFrame({'Label': label_encoder.classes_, 'Probability': proba}).set_index('Label'))
+            st.bar_chart(pd.DataFrame({\'Label\': label_encoder.classes_, \'Probability\': proba}).set_index(\'Label\'))
         else:
             st.warning("الرجاء إدخال نص للتحليل.")
 
@@ -218,7 +218,7 @@ elif choice == "الكشف عن الأزمات النفسية (صوت)":
     uploaded_audio = st.file_uploader("ارفع ملف صوتي (mp3, wav)", type=["mp3", "wav"])
 
     if uploaded_audio is not None:
-        st.audio(uploaded_audio, format='audio/wav')
+        st.audio(uploaded_audio, format=\'audio/wav\')
         if st.button("تحويل الصوت وتحليل الأزمة"):
             # Save the uploaded file temporarily
             # with open("temp_audio.wav", "wb") as f:
@@ -232,7 +232,7 @@ elif choice == "الكشف عن الأزمات النفسية (صوت)":
                 label, proba = predict_crisis_sbert(transcribed_text)
                 st.write(f"**التصنيف المتوقع:** {label}")
                 st.write(f"**احتمالية التصنيف:** {proba[label_encoder.transform([label])[0]]:.2f}")
-                st.bar_chart(pd.DataFrame({'Label': label_encoder.classes_, 'Probability': proba}).set_index('Label'))
+                st.bar_chart(pd.DataFrame({\'Label\': label_encoder.classes_, \'Probability\': proba}).set_index(\'Label\'))
             else:
                 st.warning("لم يتمكن من تحويل الصوت إلى نص.")
 
@@ -271,7 +271,7 @@ elif choice == "تنظيف وتحليل البيانات (Excel/CSV)":
 
     if uploaded_file is not None:
         try:
-            if uploaded_file.name.endswith('.csv'):
+            if uploaded_file.name.endswith(\".csv\"):
                 df = pd.read_csv(uploaded_file)
             else:
                 df = pd.read_excel(uploaded_file)
@@ -300,7 +300,7 @@ elif choice == "التحليل الاستكشافي للبيانات والرس�
 
     if uploaded_file is not None:
         try:
-            if uploaded_file.name.endswith('.csv'):
+            if uploaded_file.name.endswith(\".csv\"):
                 df = pd.read_csv(uploaded_file)
             else:
                 df = pd.read_excel(uploaded_file)
@@ -317,8 +317,8 @@ elif choice == "تحليل الترددات والكلمات الأكثر تكر
     if st.button("تحليل التكرار"):
         words = text_input.split()
         word_freq = pd.Series(words).value_counts().reset_index()
-        word_freq.columns = ['الكلمة', 'التكرار']
-        fig = px.bar(word_freq.head(10), x='الكلمة', y='التكرار', title="أكثر 10 كلمات تكراراً")
+        word_freq.columns = [\'الكلمة\', \'التكرار\']
+        fig = px.bar(word_freq.head(10), x=\'الكلمة\', y=\'التكرار\', title="أكثر 10 كلمات تكراراً")
         st.plotly_chart(fig)
 
 elif choice == "توليد تقرير شامل (PDF)":
@@ -364,10 +364,10 @@ if st.sidebar.checkbox("تفعيل تأثير البالونات (Balloons)?"):
 # --- Custom CSS for professional look ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+    @import url(\'https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap\');
     
     html, body, [class*="css"]  {
-        font-family: 'Cairo', sans-serif;
+        font-family: \'Cairo\', sans-serif;
         text-align: right;
     }
     
@@ -412,36 +412,4 @@ st.markdown("""
         color: #2c3e50;
     }
 </style>
-""",unsafe_allow_html=True)}],path:
-
-# --- Custom CSS for professional look (optional) ---
-st.markdown("""
-<style>
-    .reportview-container {
-        background: #f0f2f6;
-    }
-    .sidebar .sidebar-content {
-        background: #ffffff;
-    }
-    header .decoration {
-        background-image: linear-gradient(90deg, rgb(0, 172, 238), rgb(0, 238, 172));
-    }
-    .stButton>button {
-        background-color: #4CAF50;
-        color: white;
-        padding: 10px 20px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 4px 2px;
-        cursor: pointer;
-        border-radius: 8px;
-        border: none;
-    }
-    .stButton>button:hover {
-        background-color: #45a049;
-    }
-</style>
 """, unsafe_allow_html=True)
-
