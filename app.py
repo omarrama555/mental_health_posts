@@ -28,11 +28,8 @@ st.set_page_config(
 def load_models():
     try:
         # Load the Sentence Transformer model
-        sbert_model_path = 'saved_models/sbert_encoder'
-        if not os.path.exists(sbert_model_path):
-            st.error(f"SBERT model path not found: {sbert_model_path}")
-            st.stop()
-        sbert_model = SentenceTransformer(sbert_model_path)
+        # Load the Sentence Transformer model directly from Hugging Face
+        sbert_model = SentenceTransformer('all-MiniLM-L6-v2')
 
         # Load other models and encoders
         lr_augmented_model = joblib.load('saved_models/lr_augmented.pkl')
